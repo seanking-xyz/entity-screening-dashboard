@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Entity Screening Incidents Dashboard (Jan 2025 - Mar 2026)</title>
+    <title>Entity Screening Incidents Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
     <style>
         * {
             margin: 0;
@@ -20,7 +21,7 @@
         }
         .dashboard-header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             padding: 20px;
             background: rgba(255,255,255,0.05);
             border-radius: 15px;
@@ -37,9 +38,82 @@
             color: #aaa;
             font-size: 1.1em;
         }
+        
+        /* Date Filter Styles */
+        .filter-container {
+            background: rgba(255,255,255,0.08);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+            justify-content: center;
+        }
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .filter-group label {
+            color: #aaa;
+            font-size: 0.95em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .filter-group input[type="date"] {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            padding: 10px 15px;
+            color: #fff;
+            font-size: 0.95em;
+            cursor: pointer;
+        }
+        .filter-group input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            cursor: pointer;
+        }
+        .filter-btn {
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 25px;
+            color: #fff;
+            font-size: 0.95em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .filter-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0,212,255,0.4);
+        }
+        .reset-btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            padding: 10px 20px;
+            color: #aaa;
+            font-size: 0.95em;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .reset-btn:hover {
+            background: rgba(255,255,255,0.2);
+            color: #fff;
+        }
+        .date-range-display {
+            color: #00d4ff;
+            font-size: 0.9em;
+            margin-left: 10px;
+        }
+        
         .kpi-row {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 20px;
             margin-bottom: 30px;
         }
@@ -70,8 +144,6 @@
         .kpi-card.sev2 .kpi-value { color: #ffa502; }
         .kpi-card.sev3 .kpi-value { color: #2ed573; }
         .kpi-card.total .kpi-value { color: #00d4ff; }
-        .kpi-card.customers .kpi-value { color: #ff6b81; }
-        .kpi-card.hours .kpi-value { color: #7bed9f; }
         
         .charts-grid {
             display: grid;
@@ -129,6 +201,9 @@
         tr:hover {
             background: rgba(255,255,255,0.05);
         }
+        tr.hidden {
+            display: none;
+        }
         .sev-badge {
             display: inline-block;
             padding: 4px 12px;
@@ -171,38 +246,52 @@
             color: #00d4ff;
             text-decoration: none;
         }
+        
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-size: 1.1em;
+        }
     </style>
 </head>
 <body>
     <div class="dashboard-header">
         <h1>🛡️ Entity Screening Incidents Dashboard</h1>
-        <p>January 2025 - March 2026 | Foundational Compliance Engineering</p>
+        <p>Foundational Compliance Engineering</p>
+    </div>
+
+    <!-- Date Filter -->
+    <div class="filter-container">
+        <div class="filter-group">
+            <label>From:</label>
+            <input type="date" id="startDate" value="2025-01-01">
+        </div>
+        <div class="filter-group">
+            <label>To:</label>
+            <input type="date" id="endDate" value="2026-03-06">
+        </div>
+        <button class="filter-btn" onclick="applyFilter()">Apply Filter</button>
+        <button class="reset-btn" onclick="resetFilter()">Reset</button>
+        <span class="date-range-display" id="dateRangeDisplay"></span>
     </div>
 
     <div class="kpi-row">
         <div class="kpi-card total">
-            <div class="kpi-value">14</div>
+            <div class="kpi-value" id="kpiTotal">14</div>
             <div class="kpi-label">Total Incidents</div>
         </div>
         <div class="kpi-card sev1">
-            <div class="kpi-value">1</div>
+            <div class="kpi-value" id="kpiSev1">1</div>
             <div class="kpi-label">SEV1 Incidents</div>
         </div>
         <div class="kpi-card sev2">
-            <div class="kpi-value">6</div>
+            <div class="kpi-value" id="kpiSev2">6</div>
             <div class="kpi-label">SEV2 Incidents</div>
         </div>
         <div class="kpi-card sev3">
-            <div class="kpi-value">7</div>
+            <div class="kpi-value" id="kpiSev3">7</div>
             <div class="kpi-label">SEV3 Incidents</div>
-        </div>
-        <div class="kpi-card customers">
-            <div class="kpi-value">240K+</div>
-            <div class="kpi-label">Customers Impacted</div>
-        </div>
-        <div class="kpi-card hours">
-            <div class="kpi-value">290+</div>
-            <div class="kpi-label">Total Outage Hours</div>
         </div>
     </div>
 
@@ -251,191 +340,10 @@
                     <th>Root Cause</th>
                 </tr>
             </thead>
-            <tbody>
-                <tr>
-                    <td><strong>CES-331</strong></td>
-                    <td>2025-03-05</td>
-                    <td><span class="sev-badge sev-3">SEV3</span></td>
-                    <td class="number-cell high">142,321</td>
-                    <td class="number-cell high">142,321</td>
-                    <td class="number-cell high">144</td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell high">144</td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell">1</td>
-                    <td><span class="root-cause-badge">Configuration</span></td>
-                </tr>
-                <tr>
-                    <td><strong>INC-4923</strong></td>
-                    <td>2025-04-14</td>
-                    <td><span class="sev-badge sev-3">SEV3</span></td>
-                    <td class="number-cell">4,000</td>
-                    <td class="number-cell">4,000</td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell high">264</td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell">1</td>
-                    <td><span class="root-cause-badge">Process Gap</span></td>
-                </tr>
-                <tr>
-                    <td><strong>INC-5902</strong></td>
-                    <td>2025-04-24</td>
-                    <td><span class="sev-badge sev-1">SEV1</span></td>
-                    <td class="number-cell high">91,000</td>
-                    <td class="number-cell high">91,000</td>
-                    <td class="number-cell high">58</td>
-                    <td class="number-cell high">53</td>
-                    <td class="number-cell high">58</td>
-                    <td class="number-cell high">48</td>
-                    <td class="number-cell">1</td>
-                    <td><span class="root-cause-badge">Rails Upgrade</span></td>
-                </tr>
-                <tr>
-                    <td><strong>INC-5926</strong></td>
-                    <td>2025-05-01</td>
-                    <td><span class="sev-badge sev-2">SEV2</span></td>
-                    <td class="number-cell">130</td>
-                    <td class="number-cell">130</td>
-                    <td class="number-cell">6</td>
-                    <td class="number-cell">2.25</td>
-                    <td class="number-cell">25.6</td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell">3</td>
-                    <td><span class="root-cause-badge">Vendor Error</span></td>
-                </tr>
-                <tr>
-                    <td><strong>INC-5493</strong></td>
-                    <td>2025-06-23</td>
-                    <td><span class="sev-badge sev-3">SEV3</span></td>
-                    <td class="number-cell">2,800</td>
-                    <td class="number-cell">2,800</td>
-                    <td class="number-cell">7</td>
-                    <td class="number-cell">5</td>
-                    <td class="number-cell">7</td>
-                    <td class="number-cell high">48</td>
-                    <td class="number-cell">1</td>
-                    <td><span class="root-cause-badge">Vendor Maintenance</span></td>
-                </tr>
-                <tr>
-                    <td><strong>INC-5765</strong></td>
-                    <td>2025-08-12</td>
-                    <td><span class="sev-badge sev-3">SEV3</span></td>
-                    <td class="number-cell">11</td>
-                    <td class="number-cell">11</td>
-                    <td class="number-cell">0.37</td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell">0.37</td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell">1</td>
-                    <td><span class="root-cause-badge">Credential Expiry</span></td>
-                </tr>
-                <tr>
-                    <td><strong>INC-6158</strong></td>
-                    <td>2025-07-23</td>
-                    <td><span class="sev-badge sev-3">SEV3</span></td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell high">48</td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell high">48</td>
-                    <td class="number-cell high">48</td>
-                    <td class="number-cell">1</td>
-                    <td><span class="root-cause-badge">Batch Scheduling</span></td>
-                </tr>
-                <tr>
-                    <td><strong>INC-6222</strong></td>
-                    <td>2025-09-15</td>
-                    <td><span class="sev-badge sev-3">SEV3</span></td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell">1</td>
-                    <td><span class="root-cause-badge">Infrastructure</span></td>
-                </tr>
-                <tr>
-                    <td><strong>INC-6270</strong></td>
-                    <td>2025-09-29</td>
-                    <td><span class="sev-badge sev-3">SEV3</span></td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell">1</td>
-                    <td><span class="root-cause-badge">Configuration</span></td>
-                </tr>
-                <tr>
-                    <td><strong>INC-6381</strong></td>
-                    <td>2025-10-17</td>
-                    <td><span class="sev-badge sev-2">SEV2</span></td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell">4</td>
-                    <td class="number-cell">0.5</td>
-                    <td class="number-cell">4</td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell">1</td>
-                    <td><span class="root-cause-badge">DynamoDB Capacity</span></td>
-                </tr>
-                <tr>
-                    <td><strong>INC-6473</strong></td>
-                    <td>2025-12-10</td>
-                    <td><span class="sev-badge sev-3">SEV3</span></td>
-                    <td class="number-cell">38</td>
-                    <td class="number-cell high">1,000,000</td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell high">264</td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell">1</td>
-                    <td><span class="root-cause-badge">Process Gap</span></td>
-                </tr>
-                <tr>
-                    <td><strong>INC-7537</strong></td>
-                    <td>2026-01-29</td>
-                    <td><span class="sev-badge sev-2">SEV2</span></td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell">1</td>
-                    <td><span class="root-cause-badge">Validation Error</span></td>
-                </tr>
-                <tr>
-                    <td><strong>INC-7586</strong></td>
-                    <td>2026-02-05</td>
-                    <td><span class="sev-badge sev-2">SEV2</span></td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell">4</td>
-                    <td class="number-cell">0.5</td>
-                    <td class="number-cell">4</td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell">1</td>
-                    <td><span class="root-cause-badge">DynamoDB Capacity</span></td>
-                </tr>
-                <tr>
-                    <td><strong>INC-7658</strong></td>
-                    <td>2026-02-12</td>
-                    <td><span class="sev-badge sev-2">SEV2</span></td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell">19</td>
-                    <td class="number-cell">0.5</td>
-                    <td class="number-cell">19</td>
-                    <td class="number-cell zero">0</td>
-                    <td class="number-cell">4</td>
-                    <td><span class="root-cause-badge">Capacity/Timeout</span></td>
-                </tr>
+            <tbody id="incidentTableBody">
             </tbody>
         </table>
+        <div class="no-data" id="noDataMessage" style="display: none;">No incidents found in the selected date range.</div>
     </div>
 
     <div class="footer">
@@ -445,180 +353,288 @@
     </div>
 
     <script>
+        // Incident Data
+        const incidents = [
+            { id: 'CES-331', date: '2025-03-05', severity: 3, customers: 142321, failedScreens: 142321, outage: 144, ttd: 0, ttr: 144, slaBreach: 0, markets: 1, rootCause: 'Configuration' },
+            { id: 'INC-4923', date: '2025-04-14', severity: 3, customers: 4000, failedScreens: 4000, outage: 0, ttd: 264, ttr: 0, slaBreach: 0, markets: 1, rootCause: 'Process Gap' },
+            { id: 'INC-5902', date: '2025-04-24', severity: 1, customers: 91000, failedScreens: 91000, outage: 58, ttd: 53, ttr: 58, slaBreach: 48, markets: 1, rootCause: 'Rails Upgrade' },
+            { id: 'INC-5926', date: '2025-05-01', severity: 2, customers: 130, failedScreens: 130, outage: 6, ttd: 2.25, ttr: 25.6, slaBreach: 0, markets: 3, rootCause: 'Vendor Error' },
+            { id: 'INC-5493', date: '2025-06-23', severity: 3, customers: 2800, failedScreens: 2800, outage: 7, ttd: 5, ttr: 7, slaBreach: 48, markets: 1, rootCause: 'Vendor Maintenance' },
+            { id: 'INC-6158', date: '2025-07-23', severity: 3, customers: 0, failedScreens: 0, outage: 48, ttd: 0, ttr: 48, slaBreach: 48, markets: 1, rootCause: 'Batch Scheduling' },
+            { id: 'INC-5765', date: '2025-08-12', severity: 3, customers: 11, failedScreens: 11, outage: 0.37, ttd: 0, ttr: 0.37, slaBreach: 0, markets: 1, rootCause: 'Credential Expiry' },
+            { id: 'INC-6222', date: '2025-09-15', severity: 3, customers: 0, failedScreens: 0, outage: 0, ttd: 0, ttr: 0, slaBreach: 0, markets: 1, rootCause: 'Infrastructure' },
+            { id: 'INC-6270', date: '2025-09-29', severity: 3, customers: 0, failedScreens: 0, outage: 0, ttd: 0, ttr: 0, slaBreach: 0, markets: 1, rootCause: 'Configuration' },
+            { id: 'INC-6381', date: '2025-10-17', severity: 2, customers: 0, failedScreens: 0, outage: 4, ttd: 0.5, ttr: 4, slaBreach: 0, markets: 1, rootCause: 'DynamoDB Capacity' },
+            { id: 'INC-6473', date: '2025-12-10', severity: 3, customers: 38, failedScreens: 1000000, outage: 0, ttd: 264, ttr: 0, slaBreach: 0, markets: 1, rootCause: 'Process Gap' },
+            { id: 'INC-7537', date: '2026-01-29', severity: 2, customers: 0, failedScreens: 0, outage: 0, ttd: 0, ttr: 0, slaBreach: 0, markets: 1, rootCause: 'Validation Error' },
+            { id: 'INC-7586', date: '2026-02-05', severity: 2, customers: 0, failedScreens: 0, outage: 4, ttd: 0.5, ttr: 4, slaBreach: 0, markets: 1, rootCause: 'DynamoDB Capacity' },
+            { id: 'INC-7658', date: '2026-02-12', severity: 2, customers: 0, failedScreens: 0, outage: 19, ttd: 0.5, ttr: 19, slaBreach: 0, markets: 4, rootCause: 'Capacity/Timeout' }
+        ];
+
+        // Chart instances
+        let monthChart, rootCauseChart, customerChart, ttrChart;
+
         // Chart.js configuration
         Chart.defaults.color = '#aaa';
         Chart.defaults.borderColor = 'rgba(255,255,255,0.1)';
 
-        // Incidents by Month - Stacked by Severity
-        new Chart(document.getElementById('incidentsByMonth'), {
-            type: 'bar',
-            data: {
-                labels: ['Mar 25', 'Apr 25', 'May 25', 'Jun 25', 'Jul 25', 'Aug 25', 'Sep 25', 'Oct 25', 'Nov 25', 'Dec 25', 'Jan 26', 'Feb 26'],
-                datasets: [
-                    {
-                        label: 'SEV1 (P0)',
-                        data: [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                        backgroundColor: 'rgba(255, 71, 87, 0.85)',
-                        borderColor: 'rgba(255, 71, 87, 1)',
-                        borderWidth: 1,
-                        borderRadius: 3
-                    },
-                    {
-                        label: 'SEV2 (P1)',
-                        data: [0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 2],
-                        backgroundColor: 'rgba(255, 165, 2, 0.85)',
-                        borderColor: 'rgba(255, 165, 2, 1)',
-                        borderWidth: 1,
-                        borderRadius: 3
-                    },
-                    {
-                        label: 'SEV3 (P2)',
-                        data: [1, 1, 0, 1, 1, 1, 2, 0, 0, 1, 0, 0],
-                        backgroundColor: 'rgba(46, 213, 115, 0.85)',
-                        borderColor: 'rgba(46, 213, 115, 1)',
-                        borderWidth: 1,
-                        borderRadius: 3
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'top',
-                        labels: {
-                            padding: 15,
-                            usePointStyle: true,
-                            pointStyle: 'rectRounded'
+        function filterIncidents(startDate, endDate) {
+            return incidents.filter(inc => {
+                const incDate = new Date(inc.date);
+                return incDate >= startDate && incDate <= endDate;
+            });
+        }
+
+        function updateKPIs(filtered) {
+            const total = filtered.length;
+            const sev1 = filtered.filter(i => i.severity === 1).length;
+            const sev2 = filtered.filter(i => i.severity === 2).length;
+            const sev3 = filtered.filter(i => i.severity === 3).length;
+
+            document.getElementById('kpiTotal').textContent = total;
+            document.getElementById('kpiSev1').textContent = sev1;
+            document.getElementById('kpiSev2').textContent = sev2;
+            document.getElementById('kpiSev3').textContent = sev3;
+        }
+
+        function updateTable(filtered) {
+            const tbody = document.getElementById('incidentTableBody');
+            const noDataMsg = document.getElementById('noDataMessage');
+            
+            tbody.innerHTML = '';
+            
+            if (filtered.length === 0) {
+                noDataMsg.style.display = 'block';
+                return;
+            }
+            
+            noDataMsg.style.display = 'none';
+            
+            filtered.forEach(inc => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${inc.id}</strong></td>
+                    <td>${inc.date}</td>
+                    <td><span class="sev-badge sev-${inc.severity}">SEV${inc.severity}</span></td>
+                    <td class="number-cell ${inc.customers > 10000 ? 'high' : (inc.customers === 0 ? 'zero' : '')}">${inc.customers.toLocaleString()}</td>
+                    <td class="number-cell ${inc.failedScreens > 100000 ? 'high' : (inc.failedScreens === 0 ? 'zero' : '')}">${inc.failedScreens.toLocaleString()}</td>
+                    <td class="number-cell ${inc.outage > 20 ? 'high' : (inc.outage === 0 ? 'zero' : '')}">${inc.outage}</td>
+                    <td class="number-cell ${inc.ttd > 50 ? 'high' : (inc.ttd === 0 ? 'zero' : '')}">${inc.ttd}</td>
+                    <td class="number-cell ${inc.ttr > 20 ? 'high' : (inc.ttr === 0 ? 'zero' : '')}">${inc.ttr}</td>
+                    <td class="number-cell ${inc.slaBreach > 0 ? 'high' : 'zero'}">${inc.slaBreach}</td>
+                    <td class="number-cell">${inc.markets}</td>
+                    <td><span class="root-cause-badge">${inc.rootCause}</span></td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function getMonthlyData(filtered) {
+            const months = {};
+            filtered.forEach(inc => {
+                const date = new Date(inc.date);
+                const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                if (!months[monthKey]) {
+                    months[monthKey] = { sev1: 0, sev2: 0, sev3: 0 };
+                }
+                if (inc.severity === 1) months[monthKey].sev1++;
+                else if (inc.severity === 2) months[monthKey].sev2++;
+                else if (inc.severity === 3) months[monthKey].sev3++;
+            });
+            return months;
+        }
+
+        function formatMonthLabel(monthKey) {
+            const [year, month] = monthKey.split('-');
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            return `${monthNames[parseInt(month) - 1]} ${year.slice(2)}`;
+        }
+
+        function updateCharts(filtered) {
+            // Monthly chart
+            const monthlyData = getMonthlyData(filtered);
+            const sortedMonths = Object.keys(monthlyData).sort();
+            const labels = sortedMonths.map(formatMonthLabel);
+            const sev1Data = sortedMonths.map(m => monthlyData[m].sev1);
+            const sev2Data = sortedMonths.map(m => monthlyData[m].sev2);
+            const sev3Data = sortedMonths.map(m => monthlyData[m].sev3);
+
+            if (monthChart) monthChart.destroy();
+            monthChart = new Chart(document.getElementById('incidentsByMonth'), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'SEV1 (P0)',
+                            data: sev1Data,
+                            backgroundColor: 'rgba(255, 71, 87, 0.85)',
+                            borderColor: 'rgba(255, 71, 87, 1)',
+                            borderWidth: 1,
+                            borderRadius: 3
+                        },
+                        {
+                            label: 'SEV2 (P1)',
+                            data: sev2Data,
+                            backgroundColor: 'rgba(255, 165, 2, 0.85)',
+                            borderColor: 'rgba(255, 165, 2, 1)',
+                            borderWidth: 1,
+                            borderRadius: 3
+                        },
+                        {
+                            label: 'SEV3 (P2)',
+                            data: sev3Data,
+                            backgroundColor: 'rgba(46, 213, 115, 0.85)',
+                            borderColor: 'rgba(46, 213, 115, 1)',
+                            borderWidth: 1,
+                            borderRadius: 3
                         }
-                    },
-                    tooltip: {
-                        mode: 'index',
-                        intersect: false
-                    }
+                    ]
                 },
-                scales: {
-                    x: {
-                        stacked: true
-                    },
-                    y: {
-                        stacked: true,
-                        beginAtZero: true,
-                        ticks: { stepSize: 1 }
-                    }
-                }
-            }
-        });
-
-        // Root Cause Distribution
-        new Chart(document.getElementById('rootCauseChart'), {
-            type: 'doughnut',
-            data: {
-                labels: ['Configuration', 'Process Gap', 'Vendor Issues', 'DynamoDB Capacity', 'Infrastructure', 'Other'],
-                datasets: [{
-                    data: [2, 2, 3, 2, 1, 4],
-                    backgroundColor: [
-                        'rgba(255, 99, 132, 0.7)',
-                        'rgba(54, 162, 235, 0.7)',
-                        'rgba(255, 206, 86, 0.7)',
-                        'rgba(75, 192, 192, 0.7)',
-                        'rgba(153, 102, 255, 0.7)',
-                        'rgba(255, 159, 64, 0.7)'
-                    ],
-                    borderWidth: 0
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'right',
-                        labels: { padding: 15 }
-                    }
-                }
-            }
-        });
-
-        // Customer Impact Chart
-        new Chart(document.getElementById('customerImpactChart'), {
-            type: 'bar',
-            data: {
-                labels: ['CES-331', 'INC-4923', 'INC-5902', 'INC-5926', 'INC-5493', 'INC-5765', 'INC-6473'],
-                datasets: [{
-                    label: 'Customers Impacted',
-                    data: [142321, 4000, 91000, 130, 2800, 11, 38],
-                    backgroundColor: [
-                        'rgba(255, 107, 129, 0.7)',
-                        'rgba(255, 107, 129, 0.7)',
-                        'rgba(255, 71, 87, 0.9)',
-                        'rgba(255, 107, 129, 0.7)',
-                        'rgba(255, 107, 129, 0.7)',
-                        'rgba(255, 107, 129, 0.7)',
-                        'rgba(255, 107, 129, 0.7)'
-                    ],
-                    borderRadius: 5
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                indexAxis: 'y',
-                plugins: {
-                    legend: { display: false }
-                },
-                scales: {
-                    x: {
-                        type: 'logarithmic',
-                        title: {
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
                             display: true,
-                            text: 'Customers (log scale)'
-                        }
-                    }
-                }
-            }
-        });
-
-        // Time to Resolve Chart
-        new Chart(document.getElementById('ttrChart'), {
-            type: 'bar',
-            data: {
-                labels: ['CES-331', 'INC-5902', 'INC-5926', 'INC-5493', 'INC-6158', 'INC-6381', 'INC-7586', 'INC-7658'],
-                datasets: [
-                    {
-                        label: 'Time to Detect (hrs)',
-                        data: [0, 53, 2.25, 5, 0, 0.5, 0.5, 0.5],
-                        backgroundColor: 'rgba(255, 206, 86, 0.7)',
-                        borderRadius: 3
+                            position: 'top',
+                            labels: { padding: 15, usePointStyle: true, pointStyle: 'rectRounded' }
+                        },
+                        tooltip: { mode: 'index', intersect: false }
                     },
-                    {
-                        label: 'Time to Resolve (hrs)',
-                        data: [144, 58, 25.6, 7, 48, 4, 4, 19],
-                        backgroundColor: 'rgba(75, 192, 192, 0.7)',
-                        borderRadius: 3
+                    scales: {
+                        x: { stacked: true },
+                        y: { stacked: true, beginAtZero: true, ticks: { stepSize: 1 } }
                     }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'top'
-                    }
+                }
+            });
+
+            // Root cause chart
+            const rootCauses = {};
+            filtered.forEach(inc => {
+                rootCauses[inc.rootCause] = (rootCauses[inc.rootCause] || 0) + 1;
+            });
+            
+            if (rootCauseChart) rootCauseChart.destroy();
+            rootCauseChart = new Chart(document.getElementById('rootCauseChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(rootCauses),
+                    datasets: [{
+                        data: Object.values(rootCauses),
+                        backgroundColor: [
+                            'rgba(255, 99, 132, 0.7)',
+                            'rgba(54, 162, 235, 0.7)',
+                            'rgba(255, 206, 86, 0.7)',
+                            'rgba(75, 192, 192, 0.7)',
+                            'rgba(153, 102, 255, 0.7)',
+                            'rgba(255, 159, 64, 0.7)',
+                            'rgba(199, 199, 199, 0.7)',
+                            'rgba(83, 102, 255, 0.7)',
+                            'rgba(255, 99, 255, 0.7)'
+                        ],
+                        borderWidth: 0
+                    }]
                 },
-                scales: {
-                    x: { stacked: false },
-                    y: {
-                        title: {
-                            display: true,
-                            text: 'Hours'
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right', labels: { padding: 15 } }
+                    }
+                }
+            });
+
+            // Customer impact chart
+            const withCustomers = filtered.filter(i => i.customers > 0).sort((a, b) => b.customers - a.customers);
+            
+            if (customerChart) customerChart.destroy();
+            customerChart = new Chart(document.getElementById('customerImpactChart'), {
+                type: 'bar',
+                data: {
+                    labels: withCustomers.map(i => i.id),
+                    datasets: [{
+                        label: 'Customers Impacted',
+                        data: withCustomers.map(i => i.customers),
+                        backgroundColor: withCustomers.map(i => i.severity === 1 ? 'rgba(255, 71, 87, 0.9)' : 'rgba(255, 107, 129, 0.7)'),
+                        borderRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: {
+                            type: 'logarithmic',
+                            title: { display: true, text: 'Customers (log scale)' }
                         }
                     }
                 }
-            }
+            });
+
+            // TTR chart
+            const withTTR = filtered.filter(i => i.ttr > 0 || i.ttd > 0).sort((a, b) => b.ttr - a.ttr);
+            
+            if (ttrChart) ttrChart.destroy();
+            ttrChart = new Chart(document.getElementById('ttrChart'), {
+                type: 'bar',
+                data: {
+                    labels: withTTR.map(i => i.id),
+                    datasets: [
+                        {
+                            label: 'Time to Detect (hrs)',
+                            data: withTTR.map(i => i.ttd),
+                            backgroundColor: 'rgba(255, 206, 86, 0.7)',
+                            borderRadius: 3
+                        },
+                        {
+                            label: 'Time to Resolve (hrs)',
+                            data: withTTR.map(i => i.ttr),
+                            backgroundColor: 'rgba(75, 192, 192, 0.7)',
+                            borderRadius: 3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top' } },
+                    scales: {
+                        x: { stacked: false },
+                        y: { title: { display: true, text: 'Hours' } }
+                    }
+                }
+            });
+        }
+
+        function applyFilter() {
+            const startDate = new Date(document.getElementById('startDate').value);
+            const endDate = new Date(document.getElementById('endDate').value);
+            endDate.setHours(23, 59, 59); // Include the entire end date
+            
+            const filtered = filterIncidents(startDate, endDate);
+            
+            updateKPIs(filtered);
+            updateTable(filtered);
+            updateCharts(filtered);
+            
+            // Update date range display
+            const options = { year: 'numeric', month: 'short', day: 'numeric' };
+            document.getElementById('dateRangeDisplay').textContent = 
+                `Showing ${filtered.length} incidents from ${startDate.toLocaleDateString('en-US', options)} to ${endDate.toLocaleDateString('en-US', options)}`;
+        }
+
+        function resetFilter() {
+            document.getElementById('startDate').value = '2025-01-01';
+            document.getElementById('endDate').value = '2026-03-06';
+            applyFilter();
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            applyFilter();
         });
     </script>
 </body>
