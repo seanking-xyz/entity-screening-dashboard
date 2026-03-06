@@ -224,6 +224,33 @@
             color: #b388ff;
         }
         
+        .link-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 5px;
+            font-size: 0.8em;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .link-badge.postmortem {
+            background: rgba(0, 212, 255, 0.2);
+            color: #00d4ff;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+        }
+        .link-badge.postmortem:hover {
+            background: rgba(0, 212, 255, 0.4);
+            transform: translateY(-1px);
+        }
+        .link-badge.incident {
+            background: rgba(255, 165, 2, 0.2);
+            color: #ffa502;
+            border: 1px solid rgba(255, 165, 2, 0.3);
+        }
+        .link-badge.incident:hover {
+            background: rgba(255, 165, 2, 0.4);
+            transform: translateY(-1px);
+        }
+        
         .number-cell {
             font-family: 'SF Mono', Monaco, monospace;
             color: #7bed9f;
@@ -338,6 +365,7 @@
                     <th>SLA Breach (hrs)</th>
                     <th>Markets</th>
                     <th>Root Cause</th>
+                    <th>Details</th>
                 </tr>
             </thead>
             <tbody id="incidentTableBody">
@@ -353,22 +381,36 @@
     </div>
 
     <script>
-        // Incident Data
+        // Incident Data with Links
         const incidents = [
-            { id: 'CES-331', date: '2025-03-05', severity: 3, customers: 142321, failedScreens: 142321, outage: 144, ttd: 0, ttr: 144, slaBreach: 0, markets: 1, rootCause: 'Configuration' },
-            { id: 'INC-4923', date: '2025-04-14', severity: 3, customers: 4000, failedScreens: 4000, outage: 0, ttd: 264, ttr: 0, slaBreach: 0, markets: 1, rootCause: 'Process Gap' },
-            { id: 'INC-5902', date: '2025-04-24', severity: 1, customers: 91000, failedScreens: 91000, outage: 58, ttd: 53, ttr: 58, slaBreach: 48, markets: 1, rootCause: 'Rails Upgrade' },
-            { id: 'INC-5926', date: '2025-05-01', severity: 2, customers: 130, failedScreens: 130, outage: 6, ttd: 2.25, ttr: 25.6, slaBreach: 0, markets: 3, rootCause: 'Vendor Error' },
-            { id: 'INC-5493', date: '2025-06-23', severity: 3, customers: 2800, failedScreens: 2800, outage: 7, ttd: 5, ttr: 7, slaBreach: 48, markets: 1, rootCause: 'Vendor Maintenance' },
-            { id: 'INC-6158', date: '2025-07-23', severity: 3, customers: 0, failedScreens: 0, outage: 48, ttd: 0, ttr: 48, slaBreach: 48, markets: 1, rootCause: 'Batch Scheduling' },
-            { id: 'INC-5765', date: '2025-08-12', severity: 3, customers: 11, failedScreens: 11, outage: 0.37, ttd: 0, ttr: 0.37, slaBreach: 0, markets: 1, rootCause: 'Credential Expiry' },
-            { id: 'INC-6222', date: '2025-09-15', severity: 3, customers: 0, failedScreens: 0, outage: 0, ttd: 0, ttr: 0, slaBreach: 0, markets: 1, rootCause: 'Infrastructure' },
-            { id: 'INC-6270', date: '2025-09-29', severity: 3, customers: 0, failedScreens: 0, outage: 0, ttd: 0, ttr: 0, slaBreach: 0, markets: 1, rootCause: 'Configuration' },
-            { id: 'INC-6381', date: '2025-10-17', severity: 2, customers: 0, failedScreens: 0, outage: 4, ttd: 0.5, ttr: 4, slaBreach: 0, markets: 1, rootCause: 'DynamoDB Capacity' },
-            { id: 'INC-6473', date: '2025-12-10', severity: 3, customers: 38, failedScreens: 1000000, outage: 0, ttd: 264, ttr: 0, slaBreach: 0, markets: 1, rootCause: 'Process Gap' },
-            { id: 'INC-7537', date: '2026-01-29', severity: 2, customers: 0, failedScreens: 0, outage: 0, ttd: 0, ttr: 0, slaBreach: 0, markets: 1, rootCause: 'Validation Error' },
-            { id: 'INC-7586', date: '2026-02-05', severity: 2, customers: 0, failedScreens: 0, outage: 4, ttd: 0.5, ttr: 4, slaBreach: 0, markets: 1, rootCause: 'DynamoDB Capacity' },
-            { id: 'INC-7658', date: '2026-02-12', severity: 2, customers: 0, failedScreens: 0, outage: 19, ttd: 0.5, ttr: 19, slaBreach: 0, markets: 4, rootCause: 'Capacity/Timeout' }
+            { id: 'CES-331', date: '2025-03-05', severity: 3, customers: 142321, failedScreens: 142321, outage: 144, ttd: 0, ttr: 144, slaBreach: 0, markets: 1, rootCause: 'Configuration', 
+              link: 'https://docs.google.com/document/d/1y0IK0GK71x6vEE1CIUuruMETNUXgrTpNnTnq_xjkSl4', linkType: 'Post-Mortem' },
+            { id: 'INC-4923', date: '2025-04-14', severity: 3, customers: 4000, failedScreens: 4000, outage: 0, ttd: 264, ttr: 0, slaBreach: 0, markets: 1, rootCause: 'Process Gap', 
+              link: 'https://app.incident.io/square/incidents/4923', linkType: 'Incident.io' },
+            { id: 'INC-5902', date: '2025-04-24', severity: 1, customers: 91000, failedScreens: 91000, outage: 58, ttd: 53, ttr: 58, slaBreach: 48, markets: 1, rootCause: 'Rails Upgrade', 
+              link: 'https://docs.google.com/document/d/1o4qAxgRUPiBUyH6453Yd-AM_jI6Uv4PkFLI8Lhx8s4', linkType: 'Post-Mortem' },
+            { id: 'INC-5926', date: '2025-05-01', severity: 2, customers: 130, failedScreens: 130, outage: 6, ttd: 2.25, ttr: 25.6, slaBreach: 0, markets: 3, rootCause: 'Vendor Error', 
+              link: 'https://docs.google.com/document/d/1_7XNZTED_pD26SFC-nre68jo77QU9HoMdtULcz79t-g', linkType: 'Post-Mortem' },
+            { id: 'INC-5493', date: '2025-06-23', severity: 3, customers: 2800, failedScreens: 2800, outage: 7, ttd: 5, ttr: 7, slaBreach: 48, markets: 1, rootCause: 'Vendor Maintenance', 
+              link: 'https://app.incident.io/square/incidents/5493', linkType: 'Incident.io' },
+            { id: 'INC-6158', date: '2025-07-23', severity: 3, customers: 0, failedScreens: 0, outage: 48, ttd: 0, ttr: 48, slaBreach: 48, markets: 1, rootCause: 'Batch Scheduling', 
+              link: 'https://app.incident.io/square/incidents/6158', linkType: 'Incident.io' },
+            { id: 'INC-5765', date: '2025-08-12', severity: 3, customers: 11, failedScreens: 11, outage: 0.37, ttd: 0, ttr: 0.37, slaBreach: 0, markets: 1, rootCause: 'Credential Expiry', 
+              link: 'https://docs.google.com/document/d/1Mc4-U4_N8vmzL__60JmzZyPO_W9M7cZhCj3D-NxNe70', linkType: 'Post-Mortem' },
+            { id: 'INC-6222', date: '2025-09-15', severity: 3, customers: 0, failedScreens: 0, outage: 0, ttd: 0, ttr: 0, slaBreach: 0, markets: 1, rootCause: 'Infrastructure', 
+              link: 'https://app.incident.io/square/incidents/6222', linkType: 'Incident.io' },
+            { id: 'INC-6270', date: '2025-09-29', severity: 3, customers: 0, failedScreens: 0, outage: 0, ttd: 0, ttr: 0, slaBreach: 0, markets: 1, rootCause: 'Configuration', 
+              link: 'https://app.incident.io/square/incidents/6270', linkType: 'Incident.io' },
+            { id: 'INC-6381', date: '2025-10-17', severity: 2, customers: 0, failedScreens: 0, outage: 4, ttd: 0.5, ttr: 4, slaBreach: 0, markets: 1, rootCause: 'DynamoDB Capacity', 
+              link: 'https://app.incident.io/cash/incidents/6381', linkType: 'Incident.io' },
+            { id: 'INC-6473', date: '2025-12-10', severity: 3, customers: 38, failedScreens: 1000000, outage: 0, ttd: 264, ttr: 0, slaBreach: 0, markets: 1, rootCause: 'Process Gap', 
+              link: 'https://docs.google.com/document/d/1tvrFFQJ6w0IF__O5bMPordQ97mkwXukoknRPkQPW6Zg', linkType: 'Post-Mortem' },
+            { id: 'INC-7537', date: '2026-01-29', severity: 2, customers: 0, failedScreens: 0, outage: 0, ttd: 0, ttr: 0, slaBreach: 0, markets: 1, rootCause: 'Validation Error', 
+              link: 'https://app.incident.io/block/incidents/7537', linkType: 'Incident.io' },
+            { id: 'INC-7586', date: '2026-02-05', severity: 2, customers: 0, failedScreens: 0, outage: 4, ttd: 0.5, ttr: 4, slaBreach: 0, markets: 1, rootCause: 'DynamoDB Capacity', 
+              link: 'https://app.incident.io/block/incidents/7586', linkType: 'Incident.io' },
+            { id: 'INC-7658', date: '2026-02-12', severity: 2, customers: 0, failedScreens: 0, outage: 19, ttd: 0.5, ttr: 19, slaBreach: 0, markets: 4, rootCause: 'Capacity/Timeout', 
+              link: 'https://app.incident.io/block/incidents/7658', linkType: 'Incident.io' }
         ];
 
         // Chart instances
@@ -412,6 +454,8 @@
             
             filtered.forEach(inc => {
                 const row = document.createElement('tr');
+                const linkClass = inc.linkType === 'Post-Mortem' ? 'postmortem' : 'incident';
+                const linkIcon = inc.linkType === 'Post-Mortem' ? '📄' : '🔗';
                 row.innerHTML = `
                     <td><strong>${inc.id}</strong></td>
                     <td>${inc.date}</td>
@@ -424,6 +468,7 @@
                     <td class="number-cell ${inc.slaBreach > 0 ? 'high' : 'zero'}">${inc.slaBreach}</td>
                     <td class="number-cell">${inc.markets}</td>
                     <td><span class="root-cause-badge">${inc.rootCause}</span></td>
+                    <td><a href="${inc.link}" target="_blank" class="link-badge ${linkClass}">${linkIcon} ${inc.linkType}</a></td>
                 `;
                 tbody.appendChild(row);
             });
